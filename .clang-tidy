@@ -1,0 +1,11 @@
+Checks: >
+    -*,
+    bugprone-*,
+    cert-*,
+    clang-analyzer-*,
+    concurrency-*,
+    cppcoreguidelines-*,
+    -cppcoreguidelines-no-malloc,
+    -cppcoreguidelines-owning-memory,
+    performance-*,
+    readability-*,
