@@ -1,9 +1,7 @@
 #ifndef DBSTD_VECTOR
 #define DBSTD_VECTOR
 
-#include <cstdlib>
-#include <stddef.h>
-#include <algorithm>
+#include <utility>
 
 namespace dbstd {
 
@@ -16,13 +14,13 @@ private:
     T* backing;
 
     T* createBacking(size_t capacity) {
-        return static_cast<T*>(std::malloc(capacity*sizeof(T)));
+        return static_cast<T*>(::operator new(capacity*sizeof(T)));
     }
 
     void freeBacking(T* toFree, size_t size) {
         for (T* location = toFree; location < (toFree+size); ++location)
             location->~T();
-        std::free(static_cast<void*>(toFree));
+        ::operator delete(toFree);
     }
 
     void copyBacking(T* inputStart, T* inputEnd, T* outputStart) {
@@ -116,7 +114,7 @@ public:
     }
 
     template <typename ...Args>
-    void emplace_back(Args... args) {
+    void emplace_back(Args&&... args) {
         if (size == capacity) {
             capacity == 0
                 ? reserve(1)

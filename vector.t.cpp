@@ -11,12 +11,16 @@ int main() {
     Vector<int> intVec{2};
     intVec.push_back(4);
     intVec.push_back(2);
+    intVec.emplace_back(1);
 
     Vector<Lifetime> lfVec;
     lfVec.push_back(Lifetime{"moved lf"});
     const Lifetime toCopy{"copied lf"};
     lfVec.push_back(toCopy);
+    lfVec.reserve(3);
+    std::cout << "\nIn place construction*****\n";
     lfVec.emplace_back("emplaced");
+    std::cout << "****************************\n\n";
 
     std::cout << "\nfirst vec contents************\n";
     std::cout << lfVec[0] << '\n';
