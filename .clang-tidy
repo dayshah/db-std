@@ -1,6 +1,7 @@
 Checks: >
     -*,
     bugprone-*,
+    -bugprone-easily-swappable-parameters,
     cert-*,
     clang-analyzer-*,
     concurrency-*,
@@ -9,3 +10,4 @@ Checks: >
     -cppcoreguidelines-owning-memory,
     performance-*,
     readability-*,
+    -readability-braces-around-statements,
