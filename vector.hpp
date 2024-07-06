@@ -115,6 +115,17 @@ public:
         ++size;
     }
 
+    template <typename ...Args>
+    void emplace_back(Args... args) {
+        if (size == capacity) {
+            capacity == 0
+                ? reserve(1)
+                : reserve(capacity*2);
+        }
+        new (backing+size) T(std::forward<Args>(args)...);
+        ++size;
+    }
+
     T& operator[](size_t index) {
         return *(backing + index);
     }

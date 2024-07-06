@@ -16,10 +16,12 @@ int main() {
     lfVec.push_back(Lifetime{"moved lf"});
     const Lifetime toCopy{"copied lf"};
     lfVec.push_back(toCopy);
+    lfVec.emplace_back("emplaced");
 
     std::cout << "\nfirst vec contents************\n";
     std::cout << lfVec[0] << '\n';
     std::cout << lfVec[1] << '\n';
+    std::cout << lfVec[2] << '\n';
     std::cout << "**************************\n\n";
 
     Vector<Lifetime> copyConstructed{lfVec};
