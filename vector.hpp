@@ -1,26 +1,27 @@
 #ifndef DBSTD_VECTOR
 #define DBSTD_VECTOR
 
-#include <utility>
+#include <memory>
 
 namespace dbstd {
 
-template <typename T>
+template <typename T, class Allocator=std::allocator<T>>
 class Vector {
 
 private:
+    Allocator alloc;
     size_t capacity;
     size_t size;
     T* backing;
 
     T* createBacking(size_t capacity) {
-        return static_cast<T*>(::operator new(capacity*sizeof(T)));
+        return alloc.allocate(capacity);
     }
 
     void freeBacking(T* toFree, size_t size) {
         for (T* location = toFree; location < (toFree+size); ++location)
             location->~T();
-        ::operator delete(toFree);
+        alloc.deallocate(toFree, capacity);
     }
 
     void copyBacking(T* inputStart, T* inputEnd, T* outputStart) {
@@ -29,20 +30,23 @@ private:
     }
 
 public:
-    Vector()
-    : capacity(0)
+    Vector(const Allocator& alloc = Allocator())
+    : alloc(alloc)
+    , capacity(0)
     , size(0)
     , backing(createBacking(capacity))
     {}
 
-    Vector(size_t capacity)
-    : capacity(capacity)
+    Vector(size_t capacity, const Allocator& alloc = Allocator())
+    : alloc(alloc)
+    , capacity(capacity)
     , size(0)
     , backing(createBacking(capacity))
     {}
 
-    Vector(const Vector& other)
-    : capacity(other.capacity)
+    Vector(const Vector& other, const Allocator& alloc = Allocator())
+    : alloc(alloc)
+    , capacity(other.capacity)
     , size(other.size)
     , backing(createBacking(capacity))
     {
@@ -50,7 +54,8 @@ public:
     }
 
     Vector(Vector&& other) noexcept
-    : capacity(other.capacity)
+    : alloc(other.alloc)
+    , capacity(other.capacity)
     , size(other.size)
     , backing(other.backing)
     {
@@ -82,6 +87,7 @@ public:
     Vector& operator=(Vector&& other) noexcept {
         if (this != &other) {
             freeBacking(backing, size);
+            alloc = other.alloc;
             capacity = other.capacity;
             size = other.size;
             backing = other.backing;
