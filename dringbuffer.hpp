@@ -1,5 +1,5 @@
-#ifndef DBSTD_DRINGBUFFER
-#define DBSTD_DRINGBUFFER
+#ifndef DBSTD_RINGBUFFER
+#define DBSTD_RINGBUFFER
 
 #include <memory>
 #include <optional>
@@ -8,7 +8,7 @@
 namespace dbstd {
 
 template<typename T>
-class DRingBuffer {
+class RingBuffer {
 
 private:
     size_t mCapacity;
@@ -24,16 +24,16 @@ private:
     }
 
 public:
-    DRingBuffer(size_t minimumCapacity)
+    RingBuffer(size_t minimumCapacity)
     : mCapacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
     , mSize(0)
     , backing(static_cast<T*>(::operator new(sizeof(T) * mCapacity)))
     , headIdx(0) {}
 
-    DRingBuffer(const DRingBuffer& other) = delete;
-    DRingBuffer& operator=(const DRingBuffer& other) = delete;
+    RingBuffer(const RingBuffer& other) = delete;
+    RingBuffer& operator=(const RingBuffer& other) = delete;
     
-    DRingBuffer(DRingBuffer&& other) noexcept
+    RingBuffer(RingBuffer&& other) noexcept
     : mCapacity(other.mCapacity)
     , mSize(other.mSize)
     , backing(other.backing)
@@ -42,7 +42,7 @@ public:
         other.head = nullptr;
     }
 
-    DRingBuffer& operator=(DRingBuffer&& other) noexcept {
+    RingBuffer& operator=(RingBuffer&& other) noexcept {
         if (this != &other) {
             freeBacking();
             mCapacity = other.mCapacity;
@@ -55,7 +55,7 @@ public:
         return *this;
     }
 
-    ~DRingBuffer() { freeBacking(); }
+    ~RingBuffer() { freeBacking(); }
 
     template <typename ...Args>
     bool enqueue(Args&&... args) {

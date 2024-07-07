@@ -55,7 +55,7 @@ void vectorTesting() {
 }
 
 void dynamicRingBufferTesting() {
-    DRingBuffer<Lifetime> rbuf(2);
+    RingBuffer<Lifetime> rbuf(2);
     rbuf.enqueue("first");
     rbuf.enqueue("second");
     auto first = rbuf.dequeue_and_get();
