@@ -1,5 +1,5 @@
-#ifndef DBSTD_RINGBUFFER
-#define DBSTD_RINGBUFFER
+#ifndef DBSTD_DRINGBUFFER
+#define DBSTD_DRINGBUFFER
 
 #include <memory>
 #include <optional>
@@ -9,8 +9,9 @@ namespace dbstd {
 
 template<typename T>
 class DRingBuffer {
+
 private:
-    size_t capacity;
+    size_t mCapacity;
     size_t mSize;
     T* backing;
     size_t headIdx;
@@ -18,22 +19,22 @@ private:
     void freeBacking() {
         size_t end = headIdx + mSize;
         for (size_t idx = headIdx; idx < end; ++idx)
-            (backing + (idx % capacity))->~T();
+            (backing + (idx % mCapacity))->~T();
         ::operator delete(backing);
     }
 
 public:
     DRingBuffer(size_t minimumCapacity)
-    : capacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
+    : mCapacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
     , mSize(0)
-    , backing(static_cast<T*>(::operator new(sizeof(T) * capacity)))
+    , backing(static_cast<T*>(::operator new(sizeof(T) * mCapacity)))
     , headIdx(0) {}
 
     DRingBuffer(const DRingBuffer& other) = delete;
     DRingBuffer& operator=(const DRingBuffer& other) = delete;
     
     DRingBuffer(DRingBuffer&& other) noexcept
-    : capacity(other.capacity)
+    : mCapacity(other.mCapacity)
     , mSize(other.mSize)
     , backing(other.backing)
     , headIdx(other.headIdx) {
@@ -44,7 +45,7 @@ public:
     DRingBuffer& operator=(DRingBuffer&& other) noexcept {
         if (this != &other) {
             freeBacking();
-            capacity = other.capacity;
+            mCapacity = other.mCapacity;
             mSize = other.mSize;
             backing = other.backing;
             headIdx = other.headIdx;
@@ -58,12 +59,12 @@ public:
 
     template <typename ...Args>
     bool enqueue(Args&&... args) {
-        if (mSize == capacity) {
+        if (mSize == mCapacity) {
             return false;
         }
         size_t idx = headIdx + mSize;
         new 
-            (backing + (idx & (capacity - 1)))
+            (backing + (idx & (mCapacity - 1)))
             T(std::forward<Args>(args)...);
         ++mSize;
         return true;
@@ -73,7 +74,7 @@ public:
     void unchecked_enqueue(Args&&... args) {
         size_t idx = headIdx + mSize;
         new 
-            (backing + (idx & (capacity - 1)))
+            (backing + (idx & (mCapacity - 1)))
             T(std::forward<Args>(args)...);
         ++mSize;
     }
@@ -81,14 +82,14 @@ public:
     void dequeue() {
         if (mSize > 0) {
             (backing + headIdx)->~T();
-            headIdx = (headIdx + 1) & (capacity - 1);
+            headIdx = (headIdx + 1) & (mCapacity - 1);
             --mSize;
         }
     }
 
     void unchecked_dequeue() {
         (backing + headIdx)->~T();
-        headIdx = (headIdx + 1) & (capacity - 1);
+        headIdx = (headIdx + 1) & (mCapacity - 1);
         --mSize;
     }
 
@@ -97,7 +98,7 @@ public:
         if (mSize > 0) {
             result.emplace(std::move(*(backing+headIdx)));
             (backing + headIdx)->~T();
-            headIdx = (headIdx + 1) & (capacity - 1);
+            headIdx = (headIdx + 1) & (mCapacity - 1);
             --mSize;
         }
         return result;
@@ -106,7 +107,7 @@ public:
     T unchecked_dequeue_and_get() {
         T result = std::move(*(backing+headIdx));
         (backing + headIdx)->~T();
-        headIdx = (headIdx + 1) & (capacity - 1);
+        headIdx = (headIdx + 1) & (mCapacity - 1);
         --mSize;
         return result;
     }
@@ -118,6 +119,8 @@ public:
     bool empty() const { return mSize == 0; }
 
     size_t size() const { return mSize; }
+
+    size_t capacity() const { return mCapacity; }
 };
 
 }
