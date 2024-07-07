@@ -6,9 +6,9 @@
 #include "lifetime.hpp"
 #include "ringbuffer.hpp"
 
-int main() {
-    using namespace dbstd;
+using namespace dbstd;
 
+void vectorTesting() {
     Vector<int> intVec{2};
     intVec.push_back(4);
     intVec.push_back(2);
@@ -21,7 +21,6 @@ int main() {
     lfVec.reserve(3);
     std::cout << "\nIn place construction*****\n";
     lfVec.emplace_back("emplaced");
-    std::cout << "****************************\n\n";
 
     std::cout << "\nfirst vec contents************\n";
     std::cout << lfVec[0] << '\n';
@@ -53,6 +52,30 @@ int main() {
     std::cout << moveConstructed[1] << '\n';
     std::cout << "**************************\n\n";
 
+}
 
+void ringBufferTesting() {
+    RingBuffer<Lifetime> rbuf(2);
+    rbuf.enqueue("first");
+    rbuf.enqueue("second");
+    auto first = rbuf.dequeue_and_get();
+    // NOLINTBEGIN(bugprone-unchecked-optional-access)
+    std::cout << "first: " << *first << '\n';
+    std::cout << "second: " << rbuf.front() << '\n';
+    rbuf.enqueue("third");
+    std::cout << "failed enqueue: " << (rbuf.enqueue("failed") ? "success" : "fail") << '\n';
+    std::cout << "second: " << rbuf.front() << '\n';
+    std::cout << "size of two: " << rbuf.size() << '\n';
+    rbuf.dequeue();
+    auto third = *rbuf.dequeue_and_get();
+    std::cout << "third: " << third << '\n';
+    // NOLINTEND(bugprone-unchecked-optional-access)
+    std::cout << "empty at end: " << (rbuf.empty() ? "true" : "false") << '\n';
+}
+
+int main() {
+    // vectorTesting();
+    ringBufferTesting();
+    
     return 0;
 }
