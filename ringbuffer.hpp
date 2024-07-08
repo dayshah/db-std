@@ -7,49 +7,54 @@
 
 namespace dbstd {
 
-template<typename T>
+template<typename T, typename Allocator=std::allocator<T>>
 class RingBuffer {
 
 private:
+    Allocator mAlloc;
     size_t mCapacity;
     size_t mSize;
-    T* backing;
-    size_t headIdx;
+    T* mBacking;
+    size_t mHeadIdx;
 
     void freeBacking() {
-        size_t end = headIdx + mSize;
-        for (size_t idx = headIdx; idx < end; ++idx)
-            (backing + (idx % mCapacity))->~T();
-        ::operator delete(backing);
+        size_t end = mHeadIdx + mSize;
+        for (size_t idx = mHeadIdx; idx < end; ++idx)
+            (mBacking + (idx % mCapacity))->~T();
+        mAlloc.deallocate(mBacking, mCapacity);
     }
 
 public:
-    RingBuffer(size_t minimumCapacity)
-    : mCapacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
+    RingBuffer(size_t minimumCapacity, const Allocator& alloc=std::allocator<T>())
+    : mAlloc(alloc)
+    , mCapacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
     , mSize(0)
-    , backing(static_cast<T*>(::operator new(sizeof(T) * mCapacity)))
-    , headIdx(0) {}
+    , mBacking(alloc.allocate(mCapacity))
+    , mHeadIdx(0)
+    {}
 
     RingBuffer(const RingBuffer& other) = delete;
     RingBuffer& operator=(const RingBuffer& other) = delete;
     
     RingBuffer(RingBuffer&& other) noexcept
-    : mCapacity(other.mCapacity)
+    : mAlloc(other.mAlloc)
+    , mCapacity(other.mCapacity)
     , mSize(other.mSize)
-    , backing(other.backing)
-    , headIdx(other.headIdx) {
-        other.backing = nullptr;
+    , mBacking(other.mBacking)
+    , mHeadIdx(other.mHeadIdx) {
+        other.mBacking = nullptr;
         other.head = nullptr;
     }
 
     RingBuffer& operator=(RingBuffer&& other) noexcept {
         if (this != &other) {
             freeBacking();
+            mAlloc = (other.mAlloc);
             mCapacity = other.mCapacity;
             mSize = other.mSize;
-            backing = other.backing;
-            headIdx = other.headIdx;
-            other.backing = nullptr;
+            mBacking = other.mBacking;
+            mHeadIdx = other.mHeadIdx;
+            other.mBacking = nullptr;
             other.head = nullptr;
         }
         return *this;
@@ -62,9 +67,9 @@ public:
         if (mSize == mCapacity) {
             return false;
         }
-        size_t idx = headIdx + mSize;
+        size_t idx = mHeadIdx + mSize;
         new 
-            (backing + (idx & (mCapacity - 1)))
+            (mBacking + (idx & (mCapacity - 1)))
             T(std::forward<Args>(args)...);
         ++mSize;
         return true;
@@ -72,49 +77,49 @@ public:
 
     template <typename ...Args>
     void unchecked_enqueue(Args&&... args) {
-        size_t idx = headIdx + mSize;
+        size_t idx = mHeadIdx + mSize;
         new 
-            (backing + (idx & (mCapacity - 1)))
+            (mBacking + (idx & (mCapacity - 1)))
             T(std::forward<Args>(args)...);
         ++mSize;
     }
 
     void dequeue() {
         if (mSize > 0) {
-            (backing + headIdx)->~T();
-            headIdx = (headIdx + 1) & (mCapacity - 1);
+            (mBacking + mHeadIdx)->~T();
+            mHeadIdx = (mHeadIdx + 1) & (mCapacity - 1);
             --mSize;
         }
     }
 
     void unchecked_dequeue() {
-        (backing + headIdx)->~T();
-        headIdx = (headIdx + 1) & (mCapacity - 1);
+        (mBacking + mHeadIdx)->~T();
+        mHeadIdx = (mHeadIdx + 1) & (mCapacity - 1);
         --mSize;
     }
 
     std::optional<T> dequeue_and_get() {
         std::optional<T> result = std::nullopt;
         if (mSize > 0) {
-            result.emplace(std::move(*(backing+headIdx)));
-            (backing + headIdx)->~T();
-            headIdx = (headIdx + 1) & (mCapacity - 1);
+            result.emplace(std::move(*(mBacking+mHeadIdx)));
+            (mBacking + mHeadIdx)->~T();
+            mHeadIdx = (mHeadIdx + 1) & (mCapacity - 1);
             --mSize;
         }
         return result;
     }
 
     T unchecked_dequeue_and_get() {
-        T result = std::move(*(backing+headIdx));
-        (backing + headIdx)->~T();
-        headIdx = (headIdx + 1) & (mCapacity - 1);
+        T result = std::move(*(mBacking+mHeadIdx));
+        (mBacking + mHeadIdx)->~T();
+        mHeadIdx = (mHeadIdx + 1) & (mCapacity - 1);
         --mSize;
         return result;
     }
 
-    T& front() { return *(backing + headIdx); }
+    T& front() { return *(mBacking + mHeadIdx); }
     
-    const T& front() const { return *(backing + headIdx); }
+    const T& front() const { return *(mBacking + mHeadIdx); }
 
     bool empty() const { return mSize == 0; }
 
