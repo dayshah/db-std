@@ -29,7 +29,7 @@ public:
     : mAlloc(alloc)
     , mCapacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
     , mSize(0)
-    , mBacking(alloc.allocate(mCapacity))
+    , mBacking(mAlloc.allocate(mCapacity))
     , mHeadIdx(0)
     {}
 

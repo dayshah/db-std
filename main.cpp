@@ -4,7 +4,7 @@
 
 #include "vector.hpp"
 #include "lifetime.hpp"
-#include "dringbuffer.hpp"
+#include "ringbuffer.hpp"
 
 using namespace dbstd;
 
