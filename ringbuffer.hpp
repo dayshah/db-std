@@ -4,8 +4,18 @@
 #include <memory>
 #include <optional>
 #include <bit>
+#include <thread>
+#include <new>
+
+// idk gcc on my machine setup didn't define the necessary macros
+namespace std {
+inline constexpr size_t hardware_destructive_interference_size = 256;
+inline constexpr size_t hardware_constructive_interference_size = 256;
+}
 
 namespace dbstd {
+
+// Lock-free thread safe single producer single consumer queue
 
 template<typename T, typename Allocator=std::allocator<T>>
 class RingBuffer {
@@ -13,9 +23,9 @@ class RingBuffer {
 private:
     Allocator mAlloc;
     size_t mCapacity;
-    size_t mSize;
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> mSize;
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> mHeadIdx;
     T* mBacking;
-    size_t mHeadIdx;
 
     void freeBacking() {
         size_t end = mHeadIdx + mSize;
@@ -25,12 +35,13 @@ private:
     }
 
 public:
+    // capacity will be closest larger power of 2
     RingBuffer(size_t minimumCapacity, const Allocator& alloc=std::allocator<T>())
     : mAlloc(alloc)
-    , mCapacity(std::bit_ceil(minimumCapacity)) // closest larger or equal power of 2
+    , mCapacity(std::bit_ceil(minimumCapacity))
     , mSize(0)
-    , mBacking(mAlloc.allocate(mCapacity))
     , mHeadIdx(0)
+    , mBacking(mAlloc.allocate(mCapacity))
     {}
 
     RingBuffer(const RingBuffer& other) = delete;
@@ -40,8 +51,8 @@ public:
     : mAlloc(other.mAlloc)
     , mCapacity(other.mCapacity)
     , mSize(other.mSize)
-    , mBacking(other.mBacking)
-    , mHeadIdx(other.mHeadIdx) {
+    , mHeadIdx(other.mHeadIdx) 
+    , mBacking(other.mBacking) {
         other.mBacking = nullptr;
         other.head = nullptr;
     }
@@ -76,6 +87,28 @@ public:
     }
 
     template <typename ...Args>
+    void blocking_enqueue(Args&&... args) {
+        while (mSize == mCapacity) {}
+        size_t idx = mHeadIdx + mSize;
+        new 
+            (mBacking + (idx & (mCapacity - 1)))
+            T(std::forward<Args>(args)...);
+        ++mSize;
+    }
+
+    template <typename ...Args>
+    void blocking_sleeping_enqueue(int sleepNano, Args&&... args) {
+        while (mSize == mCapacity) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepNano));
+        }
+        size_t idx = mHeadIdx + mSize;
+        new 
+            (mBacking + (idx & (mCapacity - 1)))
+            T(std::forward<Args>(args)...);
+        ++mSize;
+    }
+
+    template <typename ...Args>
     void unchecked_enqueue(Args&&... args) {
         size_t idx = mHeadIdx + mSize;
         new 
@@ -84,12 +117,14 @@ public:
         ++mSize;
     }
 
-    void dequeue() {
+    bool dequeue() {
         if (mSize > 0) {
             (mBacking + mHeadIdx)->~T();
             mHeadIdx = (mHeadIdx + 1) & (mCapacity - 1);
             --mSize;
+            return true;
         }
+        return false;
     }
 
     void unchecked_dequeue() {
