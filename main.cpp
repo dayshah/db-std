@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <ostream>
+#include <thread>
 
 #include "vector.hpp"
 #include "lifetime.hpp"
@@ -77,6 +78,17 @@ void dynamicRingBufferTesting() {
 int main() {
     // vectorTesting();
     // dynamicRingBufferTesting();
-    // ThreadPool tp(100);
+    SP_ThreadPool tp(100, 8);
+    tp.start();
+    for (int i = 0; i < 100; i++) {
+        tp.enqueueJob([&i]() { 
+            for (int ii = 0; ii < 100000; ii++) {}
+            std::cout << "done with " << i << std::endl;
+        });
+    }
+    tp.stop();
+
+    // std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+
     return 0;
 }

@@ -15,13 +15,17 @@ private:
     RingBuffer<std::function<void()>> jobQueue;
     int numThreads;
     std::vector<std::thread> threads;
+    std::mutex mut;
     std::atomic<bool> keepGoing;
 
     void threadRunner() {
         while (keepGoing) {
-            if (auto job = jobQueue.dequeue_and_get()) {
-                (*job)();
+            std::optional<std::function<void()>> job;
+            {
+                std::scoped_lock lock(mut);
+                job = jobQueue.dequeue_and_get();
             }
+            if (job) (*job)();
         }
     }
 
@@ -57,6 +61,7 @@ public:
     }
 
     void enqueueJob(std::function<void()>&& job) {
+        std::scoped_lock lock(mut);
         jobQueue.enqueue(std::move(job));
     }
 
