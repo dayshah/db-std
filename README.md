@@ -1,4 +1,4 @@
-# DB-STD: DragonBaller's C++ Standard Library Implementations
+# DB-STD: *very* Simplified C++ Standard Library Implementations
 
 Some cool useful constructs for safe performant C++ multithreading.
 
